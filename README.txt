@@ -19,7 +19,10 @@ v3/quickstart/python ] for enabling your Google Drive API. This is required to e
 you are able to access your drive. The Drive.py code will require a credentials file 
 which must be downloaded from Google, it will be an option after you enable your 
 Google API via the given link. This file may have a long crazy name, you must rename 
-it: credentials.json and save it to the GoogleDrive folder. 
+it: credentials.json and save it to the GoogleDrive folder. @#**NOTE: When 
+installing this on a remote device, remember to add the credentials as part of the package.
+Without the base credentials (.json) file, you will not be able to create a pickle file for
+login!**#@
 
 2) Run Drive.py-
 The modules.py section provided in the folder should provide you with all the files 
