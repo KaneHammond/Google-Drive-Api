@@ -1,4 +1,4 @@
-
+5
 import modules
 from modules import *
 
@@ -147,8 +147,11 @@ def DOWNLOAD():
 	# Start our query for downloading the items.
 	print '\n'
 	i = 1
+	# Write list of options from the print statement to match query request
+	Options = []
 	for FileType, Items in AllData.items():
 		print '%i) File Type: %s (%i Files found)' % (i, FileType, len(Items))
+		Options.append(FileType)
 		i = i+1
 	# Query for input
 	print '\nEnter integer value below.'
@@ -165,116 +168,65 @@ def DOWNLOAD():
 	if query<0 or query>i:
 		print 'Value (%i) out of index range.' % query
 		sys.exit()
-	
-	print 'OK'
-	sys.exit()
 
+	# Prepair list of items for download based upon query result and Options
+	FileTypeForDown = Options[query-1]
 
-	# Text = []
-	# Zip = []
-	# Pictures = []
-	# TIFFFILE = []
-	# CredFiles = []
-	# for file in items:
-	# 	if file['name'][-4::]=='.zip':
-	# 		Zip.append(str(file['name']))
+	AvailableFiles = []
+	for FileType, Items in AllData.items():
+		if FileType==FileTypeForDown:
+			AvailableFiles = Items
 
-	# 	if file['name'][-4::]=='.txt':
-	# 		Text.append(str(file['name']))
+	print '\nAvailable Files for Download:\n'
+	i = 1
+	for File in AvailableFiles:
+		print '%i) %s' % (i, File)
+		i = i+1
+	print '\nSeparate values by commas or type A to download all files.'
+	query = raw_input('Please select item/s for download:')
 
-	# 	if file['name'][-4::]=='.tif':
-	# 		TIFFFILE.append(str(file['name']))
+	# Filter the query response
+	query=str(query)
+	DownloadItems = []
+	if query!='A':
+		query = query.split(',')
+		for Number in query:
+			Number=int(Number)
+			FileOfInterest = AvailableFiles[Number-1]
+			DownloadItems.append(FileOfInterest)
+	if query == 'A':
+		DownloadItems=AvailableFiles
 
-	# 	if file['name'][-4::]=='.jpg' or file['name'][-4::]=='.JPG':
-	# 		Pictures.append(str(file['name']))
-	# 	if file['name'][-5::]=='.json':
-	# 		CredFiles.append(str(file['name']))
+	# Define the file ending from selected files. This will be used for our
+	# folder the data will be placed into.
+	FileEnding = DownloadItems[0].split('.')
 
+	dir = FileEnding+'_Files'
+	if not os.path.exists(dir):
+		os.makedirs(dir)
 
-	# Use query
-	###############################
-	if query==1:
-		# Write list of all .tif files on the drive for download.
-		# Will download all files ending with .tif
-		if not Zip:
-			print('No files found.')
-			sys.exit()
-		else:
-			pass
-		# Ask to download all
-		print ('\n%i .zip files found...' % len(Zip))
-		query = raw_input('\nDownload all .zip files?(Y/N): ')
-		query=query.upper()
+	Out_Dir = FileEnding+'_Files/'
+	# WORK ON DOWNLoad
+	# Loop through available files and download them 
+	print ('Downloading selected files...')
+	for afile in AllDriveFiles:
+		BaseName = afile['name']
+		print BaseName
+		sys.exit()
+		# Filter file names to select item ID
+		for item in items:
+			if item['name']==BaseName:
+				file_id = (item['id'])
 
-		# Check validity of query 
-		if query != 'Y' and query != 'N':
-			print '%s is not a correct entry. Please enter Y or N at prompt.' % query
-			sys.exit()
-		# Download all
-		if query=='Y':
-			# Check all Landsat Codes from images to write folders for the B4 and B3 download
-			dir = 'ZipFiles/'
-			if not os.path.exists(dir):
-			    os.makedirs(dir)
+		service = build('drive', 'v3', credentials=creds)
+		request = service.files().get_media(fileId=file_id)
 
-			# Loop through available .zip to download
-			for afile in Zip:
-				BaseName = afile
-				for item in items:
-					if item['name']==BaseName:
-						file_id = (item['id'])
-
-				service = build('drive', 'v3', credentials=creds)
-				request = service.files().get_media(fileId=file_id)
-
-				print'Downloading all files...'
-				fh = io.FileIO('ZipFiles/'+BaseName, 'wb')
-				downloader = MediaIoBaseDownload(fh, request)
-				done = False
-				while done is False:
-					status, done=downloader.next_chunk()
-					print ("Downloaded %s" % (BaseName))
-		if query=='N':
-			print 'Please select the zip files your heart desires:'
-
-			# Print the files and index values for selection.
-			i = 1
-			for aItem in Zip:
-				print ('%i) %s' % (i, aItem))
-				i=i+1 
-			query = raw_input('\nEnter index values of files separated by commas (or select single file):\n')
-
-			query = query.replace(' ', '')
-			query = query.split(',')
-
-			# Select only files chosen in query
-			selection = []
-			for aItem in query:
-				index = int(aItem)-1
-				selection.append(Zip[index])
-
-			dir = 'ZipFiles/'
-			if not os.path.exists(dir):
-			    os.makedirs(dir)
-
-			# Loop through available .zip files and download them 
-			print ('Downloading selected files...')
-			for afile in selection:
-				BaseName = afile
-				# Filter file names to select item ID
-				for item in items:
-					if item['name']==BaseName:
-						file_id = (item['id'])
-
-				service = build('drive', 'v3', credentials=creds)
-				request = service.files().get_media(fileId=file_id)
-
-				fh = io.FileIO('ZipFiles/'+BaseName, 'wb')
-				downloader = MediaIoBaseDownload(fh, request)
-				done = False
-				while done is False:
-					status, done=downloader.next_chunk()
-					print ("Downloaded %s" % (BaseName))
+		fh = io.FileIO('ZipFiles/'+BaseName, 'wb')
+		downloader = MediaIoBaseDownload(fh, request)
+		done = False
+		while done is False:
+			status, done=downloader.next_chunk()
+			print ("Downloaded %s" % (BaseName))
 	###############################
 	if query==2:
 		# Write list of all .tif files on the drive for download.
