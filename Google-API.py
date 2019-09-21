@@ -1,4 +1,3 @@
-# install google-api-python-client
 
 import modules
 from modules import *
@@ -16,26 +15,38 @@ from modules import *
 # whatever the location is.                           							   #
 ####################################################################################
 
-# Primary files supported: (The ones I needed)
-# File Download = .zip and .tif
-# File Upload = .pdf, .zip, and .csv
+####################################################################################
+# Lets pull in some useful information. Our FileTypes.csv contains all supported file
+# types for the Google API (excluding Andrew Toolkit). *NO ANDREW TOOLKIT SUPPORT*
+# The list file formats will contain [File common name, mime type, file ending]
+
+FileFormats = []
+with open('FileTypes.csv') as TheCsv:
+	for aItem in TheCsv:
+		aItem = aItem.replace('\n', '')
+		# Split the csv data by comma
+		aItem = aItem.split(',')
+		# Select info we want, all but the last element which consists of '\n'
+		FileFormats.append(aItem)
+
+
 
 
 # Request which path is desired. Upload or download
-print '\nPlease choose a Google Drive request:\n1) File Download\n2) File Upload'
-query = raw_input('Selection (1 or 2): ')
+# print '\nPlease choose a Google Drive request:\n1) File Download\n2) File Upload'
+# query = raw_input('Selection (1 or 2): ')
 
-try:
-	query = int(query)
-except:
-	print 'Incorrect query entry: '
-	print query
-	sys.exit()
+# try:
+# 	query = int(query)
+# except:
+# 	print 'Incorrect query entry: '
+# 	print query
+# 	sys.exit()
 
-if query<0 or query>2:
-	print 'Incorrect query entry: '
-	print query
-	sys.exit()
+# if query<0 or query>2:
+# 	print 'Incorrect query entry: '
+# 	print query
+# 	sys.exit()
 
 
 # Define possible scopes for use
@@ -44,13 +55,9 @@ if query<0 or query>2:
 # options in drive. We use SCOPESRO for listing files for download and SCOPESUP for
 # the download section. SCOPES is the general one provided in a tutorial which I left
 # as an option, but would have to be edited in the code.
-SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
 SCOPESRO = ['https://www.googleapis.com/auth/drive.readonly']
 # Upload
 SCOPESUP = ['https://www.googleapis.com/auth/drive']
-
-#########################################################################################
-# The code
 
 
 def DOWNLOAD():
@@ -85,44 +92,103 @@ def DOWNLOAD():
 	results = service.files().list(
 		fields="nextPageToken, files(id, name)").execute()
 
-	# Select which file type you would like to download. Currently only filters through
-	# .tif and zip files.
-
-	print ('Available file formats for downloading:\n1) .zip\n2) .tif\n3) .json')
-
-	query = input('\nWhich type of file are you downloading?\n(Select 1-3):')
-
-	if query<=0 or query>3:
-		print 'Invalid selection: %i' % query
-		sys.exit()
-	if type(query)!=int:
-		print 'Invalid selection: %f' % query
-		sys.exit()
 	# collect raw file data
-	items = results.get('files', [])
+	AllDriveFiles = results.get('files', [])
 
-	# Filter items by type: Only text, zip, jpg, and tif for download. Can
-	# always add more if needed. I filter through to define Text and Picture files
-	# but I did not need them for download just yet. But the lists are still available.
-	Text = []
-	Zip = []
-	Pictures = []
-	TIFFFILE = []
-	CredFiles = []
-	for file in items:
-		if file['name'][-4::]=='.zip':
-			Zip.append(str(file['name']))
+	# Filter items by type: We will use the csv to identify which file types are in the
+	# Google Drive.
 
-		if file['name'][-4::]=='.txt':
-			Text.append(str(file['name']))
+	FileEndings = []
+	for File in AllDriveFiles:
+		FileName = str(File['name'])
+		# Split our file name by a period
+		FileName = FileName.split('.')
+		# Regarless of name, the final element from our split
+		# should be the file ending. Here we add a string item
+		# to re-insert a period to complete a file end item.
+		# Depending on file format, this list may be incorrect.
+		# This will be fixed when we cross reference the list with our csv.
+		FileEndItem = '.'+FileName[-1]
+		# Now we will filter out the trash! Only keep items which are actual file
+		# endings, and are supported.
+		for Supported in FileFormats:
+			# Final element in Suported is our file ending.
+			if Supported[-1]==FileEndItem:
+				FileEndings.append(FileEndItem)
+	# Drop doubles in FileEndings list using .keys from collections import
+	FileEndings = collections.Counter(FileEndings)
+	FileEndings = FileEndings.keys()
 
-		if file['name'][-4::]=='.tif':
-			TIFFFILE.append(str(file['name']))
+	# Write List to store each file type in.
+	AllData = {}
+	i = 0
+	# Loop through the accepted file formats listed and write a dictionary item
+	# Containing file type and list of files within each category.
+	while i < len(FileEndings):
+		templist = []
+		for File in AllDriveFiles:
+			FileNameI = str(File['name'])
+			# Split our file name by a period
+			FileName = FileNameI.split('.')
+			# Regarless of name, the final element from our split
+			# should be the file ending. Here we add a string item
+			# to re-insert a period to complete a file end item.
+			# Depending on file format, this list may be incorrect.
+			# This will be fixed when we cross reference the list with our csv.
+			FileEndItem = '.'+FileName[-1]
+			if FileEndItem ==FileEndings[i]:
+				templist.append(FileNameI)
+		for Item in FileFormats:
+			if Item[-1]==FileEndings[i]:
+				Name = Item[0]
+				AllData[Name]=templist
+		i = i+1
 
-		if file['name'][-4::]=='.jpg' or file['name'][-4::]=='.JPG':
-			Pictures.append(str(file['name']))
-		if file['name'][-5::]=='.json':
-			CredFiles.append(str(file['name']))
+	# Start our query for downloading the items.
+	print '\n'
+	i = 1
+	for FileType, Items in AllData.items():
+		print '%i) File Type: %s (%i Files found)' % (i, FileType, len(Items))
+		i = i+1
+	# Query for input
+	print '\nEnter integer value below.'
+	query = raw_input('Which type of file are you downloading?: ')
+
+	# Test query
+	try:
+		query=int(query)
+	except:
+		print 'Incorrect entry format:'
+		print query
+		sys.exit()
+
+	if query<0 or query>i:
+		print 'Value (%i) out of index range.' % query
+		sys.exit()
+	
+	print 'OK'
+	sys.exit()
+
+
+	# Text = []
+	# Zip = []
+	# Pictures = []
+	# TIFFFILE = []
+	# CredFiles = []
+	# for file in items:
+	# 	if file['name'][-4::]=='.zip':
+	# 		Zip.append(str(file['name']))
+
+	# 	if file['name'][-4::]=='.txt':
+	# 		Text.append(str(file['name']))
+
+	# 	if file['name'][-4::]=='.tif':
+	# 		TIFFFILE.append(str(file['name']))
+
+	# 	if file['name'][-4::]=='.jpg' or file['name'][-4::]=='.JPG':
+	# 		Pictures.append(str(file['name']))
+	# 	if file['name'][-5::]=='.json':
+	# 		CredFiles.append(str(file['name']))
 
 
 	# Use query
@@ -388,82 +454,5 @@ def DOWNLOAD():
 		# 			status, done=downloader.next_chunk()
 		# 			print ("Downloaded %s" % (BaseName))
 
-##########################################################################################
-
-
-def UPLOAD():
-	creds = None
-	# The file token.pickle stores the user's access and refresh tokens, and is
-	# created automatically when the authorization flow completes for the first
-	# time.
-	if os.path.exists('token.pickle'):
-		with open('token.pickle', 'rb') as token:
-			# Add try and except to pass. If teh pickle file is empty,
-			# it raises an EOFError and will not continue to write creds.
-			try:
-				creds = pickle.load(token)
-			except:
-				pass
-	# If there are no (valid) credentials available, let the user log in.
-	if not creds or not creds.valid:
-		if creds and creds.expired and creds.refresh_token:
-			creds.refresh(Request())
-		else:
-			flow = InstalledAppFlow.from_client_secrets_file(
-				'credentials.json', SCOPESUP)
-			creds = flow.run_local_server(port=0)
-		# Save the credentials for the next run
-		with open('token.pickle', 'wb') as token:
-			pickle.dump(creds, token)
-
-	service = build('drive', 'v3', credentials=creds)
-
-	# Query for file information 
-	query = raw_input('\nWhich file is it you would like to download?\nEnter File Path:')
-	query
-	File=str(query)
-	# File type
-	print 'Please select the file type:\n1) .zip\n2) .pdf\n3) .csv\n4) Not Listed'
-	query = raw_input('\nEnter selection: ')
-	query = int(query)
-	# If a file type is not listed, it can be added into the prompt above and the query below.
-	if query==1:
-		dtype = 'application/x-7z-compressed'
-	if query==2:
-		dtype = 'application/pdf'
-	if query==3:
-		dtype = 'text/csv'
-	if query==4:
-		print '\nThe file format you need requires a specific mimetype code.\nPlease see the prompted link on for adding the data type to the program:\n\nhttps://www.freeformatter.com/mime-types-list.html'
-		print '\nTravel Well Land-Strider...'
-		sys.exit()
-	# Define the file name (Based off file location, it will bear the same name 
-	# as found in its parent directory) **FileN
-	# There are 2 possible ways to enter file locations. If a copy paste is done,
-	# the result will be a file separator of \ as opposed to /. If \ is the file
-	# separator, the string will need to be split by '\\'. In which case trying to
-	# split by / will result in a single string, hence the if lenght is equal to 1
-	# check.
-	Temp = File.split('/')
-	if len(Temp)==1:
-		Temp = File.split('\\')
-		File = File.replace('\\', '/')
-	FileN = Temp[-1]
-	print '\nUploading File...'
-	file_metadata = {'name': str(FileN)}
-	media = MediaFileUpload(File,
-	                        mimetype=dtype)
-	file = service.files().create(body=file_metadata,
-	                                    media_body=media,
-	                                    fields='id').execute()
-	print '\nUpload Completed:'
-	print 'File ID: %s\nFile Name:%s' % (file.get('id'),FileN)
-
-#######################################################################################
-
-# Utilize code
-if query==1:
-	DOWNLOAD()
-if query==2:
-	UPLOAD()
+DOWNLOAD()
 
