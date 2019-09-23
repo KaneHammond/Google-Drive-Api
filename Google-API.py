@@ -4,7 +4,7 @@ from modules import *
 
 ####################################################################################
 # Hello there!					                                                   #
-# This short section of code will allow you to upload/download files from a Google #
+# This short section of code will allow you to upload/download through a Google    #
 # Drive account. The queries will request information when needed to accomodate    #
 # the transfer. A single pickle file is needed to access your account. This will be#
 # automatically created. If you wish to change the account being used, the pickle  #
@@ -12,7 +12,9 @@ from modules import *
 # remote device, api verification can be done by copying and pasting the link      #
 # (provided in the command prompt) to a web browser. File paths for uploads must   #
 # contain the file drive location as well. Meaning you must start from C:\ or      #
-# whatever the location is.                           							   #
+# whatever the location is. If using on a remote device, you must have a .json     #
+# .cred file in the working directory to allow for verification and the writting   #
+# of a pickle file.                                   							   #
 ####################################################################################
 
 ####################################################################################
@@ -29,32 +31,13 @@ with open('FileTypes.csv') as TheCsv:
 		# Select info we want, all but the last element which consists of '\n'
 		FileFormats.append(aItem)
 
-
-
-
-# Request which path is desired. Upload or download
-# print '\nPlease choose a Google Drive request:\n1) File Download\n2) File Upload'
-# query = raw_input('Selection (1 or 2): ')
-
-# try:
-# 	query = int(query)
-# except:
-# 	print 'Incorrect query entry: '
-# 	print query
-# 	sys.exit()
-
-# if query<0 or query>2:
-# 	print 'Incorrect query entry: '
-# 	print query
-# 	sys.exit()
-
-
 # Define possible scopes for use
 # If modifying these scopes, delete the file token.pickle. These are here for 
 # choosing the permission for the api connection. Each one will allow different 
 # options in drive. We use SCOPESRO for listing files for download and SCOPESUP for
-# the download section. SCOPES is the general one provided in a tutorial which I left
-# as an option, but would have to be edited in the code.
+# the upload section.
+
+# Download
 SCOPESRO = ['https://www.googleapis.com/auth/drive.readonly']
 # Upload
 SCOPESUP = ['https://www.googleapis.com/auth/drive']
@@ -92,11 +75,11 @@ def DOWNLOAD():
 	results = service.files().list(
 		fields="nextPageToken, files(id, name)").execute()
 
-	# collect raw file data
+	# collect raw file data form our google drive
 	AllDriveFiles = results.get('files', [])
 
-	# Filter items by type: We will use the csv to identify which file types are in the
-	# Google Drive.
+	# Filter items by type: We will use the csv to identify which file 
+	# types are in the Google Drive.
 
 	FileEndings = []
 	for File in AllDriveFiles:
@@ -119,7 +102,7 @@ def DOWNLOAD():
 	FileEndings = collections.Counter(FileEndings)
 	FileEndings = FileEndings.keys()
 
-	# Write List to store each file type in.
+	# Write Dictionary item to store each file type and list of files in.
 	AllData = {}
 	i = 0
 	# Loop through the accepted file formats listed and write a dictionary item
@@ -155,13 +138,13 @@ def DOWNLOAD():
 		i = i+1
 	# Query for input
 	print '\nEnter integer value below.'
-	query = raw_input('Which type of file are you downloading?: ')
+	query = raw_input('Which type of file/s are you downloading?: ')
 
-	# Test query
+	# Verify query
 	try:
 		query=int(query)
 	except:
-		print 'Incorrect entry format:'
+		print '\nIncorrect entry format: %s' % type(query)
 		print query
 		sys.exit()
 
@@ -177,234 +160,272 @@ def DOWNLOAD():
 		if FileType==FileTypeForDown:
 			AvailableFiles = Items
 
-	print '\nAvailable Files for Download:\n'
-	i = 1
-	for File in AvailableFiles:
-		print '%i) %s' % (i, File)
-		i = i+1
-	print '\nSeparate values by commas or type A to download all files.'
-	query = raw_input('Please select item/s for download:')
+	# Has a download occured? Not yet so it is false. This is defined here 
+	# as there is an alternative option for downloading .tif files which
+	# is specific to image codes. If that option is chosen, then it must
+	# be noted that a that download option was chosen and was successful.
+	# If the image codes are not able to be parsed, it will return to the 
+	# default download method.
+	D = False
 
-	# Filter the query response
-	query=str(query)
-	DownloadItems = []
-	if query!='A':
-		query = query.split(',')
-		for Number in query:
-			Number=int(Number)
-			FileOfInterest = AvailableFiles[Number-1]
-			DownloadItems.append(FileOfInterest)
-	if query == 'A':
-		DownloadItems=AvailableFiles
+	##################################################################################
+	#					SPECIAL TIF IMAGE FILE DOWNLOAD OPTION
+	# Specify special format for .tif images. If the files are in an image 
+	# collection format, this option will create folders specific to those 
+	# codes. May help with organizing data. If the format of the image name 
+	# is not supported, it will fail. Ex of image: LT05_033027_20080608_B3.tif
+	if FileTypeForDown == 'Tagged Image File Format':
+		print '\n'
+		print '*'*67
+		print '* Would you like to treat the image files as an image collection? *\n* Doing so will result in a special file format specific to image *\n* codes and "/" separators.                                       *'
+		print '*'*67
+		query = raw_input('\nEnter Y/N: ')
 
-	# Define the file ending from selected files. This will be used for our
-	# folder the data will be placed into.
-	FileEnding = DownloadItems[0].split('.')
-
-	dir = FileEnding+'_Files'
-	if not os.path.exists(dir):
-		os.makedirs(dir)
-
-	Out_Dir = FileEnding+'_Files/'
-	# WORK ON DOWNLoad
-	# Loop through available files and download them 
-	print ('Downloading selected files...')
-	for afile in AllDriveFiles:
-		BaseName = afile['name']
-		print BaseName
-		sys.exit()
-		# Filter file names to select item ID
-		for item in items:
-			if item['name']==BaseName:
-				file_id = (item['id'])
-
-		service = build('drive', 'v3', credentials=creds)
-		request = service.files().get_media(fileId=file_id)
-
-		fh = io.FileIO('ZipFiles/'+BaseName, 'wb')
-		downloader = MediaIoBaseDownload(fh, request)
-		done = False
-		while done is False:
-			status, done=downloader.next_chunk()
-			print ("Downloaded %s" % (BaseName))
-	###############################
-	if query==2:
-		# Write list of all .tif files on the drive for download.
-		# Will download all files ending with .tif if prompted
-		Images = TIFFFILE
-		if not TIFFFILE:
-			print('No files found.')
-			sys.exit()
-		else:
-			pass
-
-		# Ask which files to download all or what?
-		print ('\n%i .tif files found...' % len(TIFFFILE))
-		query = raw_input('\nDownload all .tif files?(Y/N): ')
 		query=query.upper()
 
-		if query != 'Y' and query != 'N':
-			print '%s is not a correct entry. Please enter Y or N at prompt.' % query
+		if query!='Y' and query!='N':
+			print 'Incorrect entry: '
+			print query
 			sys.exit()
-		if query=='Y':
-			print'Downloading all .tif files from Drive...'
-			# Check all Landsat Codes from images to write folders for the B4 and B3 download
-			Codes = []
-			for afile in Images:
-				BaseName = afile
-				Split = BaseName.split('.')
-				# Select only the base code for the image file
-				LandsatCode = Split[0][0:-3]
-				Codes.append(LandsatCode)
-			# Filter out codes so only one exists for each image file (both B3 and B4)
-			ImageCodes = collections.Counter(Codes).keys()
-
-			# Write a folder for each image code. These codes inform the user which
-			# satellite was used, the path and row, and date for the image. 
-			for aCode in ImageCodes:
-				dir = 'TIFImages/'+aCode
-				if not os.path.exists(dir):
-				    os.makedirs(dir)
-
-			# Loop through available .tif files and download them into the LandsatImage
-			# file folder.
-			print ('Downloading all files...')
-			for afile in Images:
-				BaseName = afile
-				Folder = afile[0:-7]
-				# Filter file names to select item ID
-				for item in items:
-					if item['name']==BaseName:
-						file_id = (item['id'])
-				# print (file_id)
-				# sys.exit()
-				service = build('drive', 'v3', credentials=creds)
-				request = service.files().get_media(fileId=file_id)
-
-				fh = io.FileIO('TIFImages//'+Folder+'/'+BaseName, 'wb')
-				downloader = MediaIoBaseDownload(fh, request)
-				done = False
-				while done is False:
-					status, done=downloader.next_chunk()
-					print ("Downloaded %s" % (BaseName))
 		if query=='N':
-			print 'Please select the image files your heart desires:'
-
-			# Print the files and index values for selection.
-			i = 1
-			for aItem in Images:
-				print ('%i) %s' % (i, aItem))
-				i=i+1 
-			query = raw_input('\nEnter index values of images separated by commas (or select single file):\n')
-			query = query.replace(' ', '')
-			query = query.split(',')
-
-			# Select only files chosen in query
-			selection = []
-			for aItem in query:
-				index = int(aItem)-1
-				selection.append(Images[index])
-
-			Codes = []
-			for afile in selection:
-				BaseName = afile
-				Split = BaseName.split('.')
-				# Select only the base code for the image file
-				LandsatCode = Split[0][0:-3]
-				Codes.append(LandsatCode)
-			# Filter out codes so only one exists for each image file (both B3 and B4)
-			ImageCodes = collections.Counter(Codes).keys()
-
-			# Write a folder for each image code. These codes inform the user which
-			# satellite was used, the path and row, and date for the image. 
-			for aCode in ImageCodes:
-				dir = 'TIFImages/'+aCode
-				if not os.path.exists(dir):
-				    os.makedirs(dir)
-
-			# Loop through available .tif files and download them into the LandsatImage
-			# file folder.
-			print ('Downloading selected files...')
-			for afile in selection:
-				BaseName = afile
-				Folder = afile[0:-7]
-				# Filter file names to select item ID
-				for item in items:
-					if item['name']==BaseName:
-						file_id = (item['id'])
-				# print (file_id)
-				# sys.exit()
-				service = build('drive', 'v3', credentials=creds)
-				request = service.files().get_media(fileId=file_id)
-				# Modified
-				# fh = io.BytesIO()
-				fh = io.FileIO('TIFImages/'+Folder+'/'+BaseName, 'wb')
-				downloader = MediaIoBaseDownload(fh, request)
-				done = False
-				while done is False:
-					status, done=downloader.next_chunk()
-					print ("Downloaded %s" % (BaseName))
-	if query==3:
-		# Write list of all .tif files on the drive for download.
-		# Will download all files ending with .tif
-		if not CredFiles:
-			print('No files found.')
-			sys.exit()
-		else:
-			pass
-		# Ask to download all
-		print ('\n%i .json files found...' % len(CredFiles))
-		query = raw_input('\nDownload all .json files?(Y/N): ')
-		query=query.upper()
-
-		# Check validity of query 
-		if query != 'Y' and query != 'N':
-			print '%s is not a correct entry. Please enter Y or N at prompt.' % query
-			sys.exit()
-		# Download all
+			print 'Will use tif_Files as output folder.'
 		if query=='Y':
-			# if only one file is present, and download all is selected, it will still
-			# be placed in the collection folder. This could potentially keep it separated
-			# from the one in use.
-			dir = 'Collection_JSON'
+			dir = 'TIF_Code_Images'
 			if not os.path.exists(dir):
 			    os.makedirs(dir)
-			# Filter through .json files for download
-			for afile in CredFiles:
-				BaseName = afile
-				for item in items:
-					if item['name']==BaseName:
-						file_id = (item['id'])
+			print '\nAvailable Files for Download:\n'
+			i = 1
+			for File in AvailableFiles:
+				print '%i) %s' % (i, File)
+				i = i+1
+			print '\nSeparate values by commas or type A to download all files.'
+			query = raw_input('Please select item/s for download:')
 
-				service = build('drive', 'v3', credentials=creds)
-				request = service.files().get_media(fileId=file_id)
+			# Filter the query response
+			query=str(query)
+			DownloadItems = []
+			if query!='A':
+				query = query.split(',')
+				for Number in query:
+					# Validate query
+					try:
+						Number=int(Number)
+					except:
+						print '\nIncorrect entry format: %s' % type(Number)
+						print Number
+						sys.exit()
+					if Number<0 or Number>len(query):
+						print 'Value (%i) out of index range.' % Number
+						sys.exit()
+					FileOfInterest = AvailableFiles[Number-1]
+					DownloadItems.append(FileOfInterest)
+			if query == 'A':
+				DownloadItems=AvailableFiles
+			try:
+				Codes = []
+				for afile in DownloadItems:
+					BaseName = afile
+					Folder = afile[0:-7]
+					Split = BaseName.split('.')
+					# Select only the base code for the image file. There are 2
+					LandsatCode = Split[0][0:-3]
+					Codes.append(LandsatCode)
+				# Filter out codes so only one exists for each image file (both B3 and B4)
+				ImageCodes = collections.Counter(Codes).keys()
 
-				print'Downloading all files...'
-				fh = io.FileIO('Collection_JSON/'+BaseName, 'wb')
-				downloader = MediaIoBaseDownload(fh, request)
-				done = False
-				while done is False:
-					status, done=downloader.next_chunk()
+				# Write a folder for each image code. These codes inform the user which
+				# satellite was used, the path and row, and date for the image. 
+				for aCode in ImageCodes:
+					dir = 'TIF_Code_Images/'+aCode
+					if not os.path.exists(dir):
+					    os.makedirs(dir)
+					# Filter file names to select item ID
+				for afile in DownloadItems:
+					BaseName = afile
+					for item in AllDriveFiles:
+						if item['name']==BaseName:
+							file_id = (item['id'])
+							Folder = afile[0:-7]
+					service = build('drive', 'v3', credentials=creds)
+					request = service.files().get_media(fileId=file_id)
+
+					fh = io.FileIO('TIF_Code_Images/'+Folder+'/'+BaseName, 'wb')
+					downloader = MediaIoBaseDownload(fh, request)
+					done = False
+					while done is False:
+						status, done=downloader.next_chunk()
+						print ("Downloading %s" % (BaseName))
 					print ("Downloaded %s" % (BaseName))
-		### WORKING ON SECTION
-		# if query=='N':
-		# 	# Filter through .json files for selection
-		# 	for afile in CredFiles:
-		# 		BaseName = afile
-		# 		for item in items:
-		# 			if item['name']==BaseName:
-		# 				file_id = (item['id'])
+					D = True
+			except:
+				print '\nFailed to process image codes into folder structures.'
+				print 'Will return to standard download method, please re-enter the selection.\n'
 
-		# 		service = build('drive', 'v3', credentials=creds)
-		# 		request = service.files().get_media(fileId=file_id)
+	##################################################################################
 
-		# 		print'Downloading all files...'
-		# 		fh = io.FileIO(BaseName, 'wb')
-		# 		downloader = MediaIoBaseDownload(fh, request)
-		# 		done = False
-		# 		while done is False:
-		# 			status, done=downloader.next_chunk()
-		# 			print ("Downloaded %s" % (BaseName))
+	# Unless tif images were already downloaded using a special file format, D will be false
+	if D == False:
+		print '\nAvailable Files for Download:\n'
+		i = 1
+		for File in AvailableFiles:
+			print '%i) %s' % (i, File)
+			i = i+1
+		print '\nSeparate values by commas or type A to download all files.'
+		query = raw_input('Please select item/s for download:')
 
-DOWNLOAD()
+		# Filter the query response
+		query=str(query)
+		DownloadItems = []
+		if query!='A':
+			query = query.split(',')
+			for Number in query:
+				# Validate query 
+				try:
+					Number=int(Number)
+				except:
+					print 'Incorrect entry format: %s' % type(Number)
+					print Number
+					return
+				if Number<0 or Number>len(query):
+					print 'Value (%i) out of index range.' % Number
+					return
+				FileOfInterest = AvailableFiles[Number-1]
+				DownloadItems.append(FileOfInterest)
+		if query == 'A':
+			DownloadItems=AvailableFiles
 
+		# Define the file ending from selected files. This will be used for our
+		# folder the data will be placed into.
+		FileEnding = DownloadItems[0].split('.')
+		FileEnding= str(FileEnding[-1])
+
+		# Write a file for downloading files. The name will reflect the file ending of the
+		# file/files being downloaded.
+		dir = FileEnding+'_Files'
+		if not os.path.exists(dir):
+			os.makedirs(dir)
+
+		Out_Dir = FileEnding+'_Files/'
+
+		# Loop through available files and download them 
+		for afile in DownloadItems:
+			BaseName = afile
+			# Filter file names to select item ID
+			for item in AllDriveFiles:
+				if item['name']==BaseName:
+					file_id = (item['id'])
+
+			service = build('drive', 'v3', credentials=creds)
+			request = service.files().get_media(fileId=file_id)
+
+			fh = io.FileIO(Out_Dir+BaseName, 'wb')
+			downloader = MediaIoBaseDownload(fh, request)
+			done = False
+			# This will return a downloading print until the file is finished.
+			# If a small file, it will loop through quick.
+			while done is False:
+				status, done=downloader.next_chunk()
+				print ("Downloading %s..." % (BaseName))
+			print ("Downloaded %s" % (BaseName))
+
+
+def UPLOAD():
+	creds = None
+	# The file token.pickle stores the user's access and refresh tokens, and is
+	# created automatically when the authorization flow completes for the first
+	# time.
+	if os.path.exists('token.pickle'):
+		with open('token.pickle', 'rb') as token:
+			# Add try and except to pass. If teh pickle file is empty,
+			# it raises an EOFError and will not continue to write creds.
+			try:
+				creds = pickle.load(token)
+			except:
+				pass
+	# If there are no (valid) credentials available, let the user log in.
+	if not creds or not creds.valid:
+		if creds and creds.expired and creds.refresh_token:
+			creds.refresh(Request())
+		else:
+			flow = InstalledAppFlow.from_client_secrets_file(
+				'credentials.json', SCOPESUP)
+			creds = flow.run_local_server(port=0)
+		# Save the credentials for the next run
+		with open('token.pickle', 'wb') as token:
+			pickle.dump(creds, token)
+
+	service = build('drive', 'v3', credentials=creds)
+
+	# Query for file information 
+	query = raw_input('\nWhich file is it you would like to download?\nEnter File Path:')
+	query
+	File=str(query)
+	# Define the file name (Based off file location, it will bear the same name 
+	# as found in its parent directory) **FileN
+	# There are 2 possible ways to enter file locations. If a copy paste is done,
+	# the result will be a file separator of \ as opposed to /. If \ is the file
+	# separator, the string will need to be split by '\\'. In which case trying to
+	# split by / will result in a single string, hence the if lenght is equal to 1
+	# check.
+	Temp = File.split('/')
+	if len(Temp)==1:
+		Temp = File.split('\\')
+		File = File.replace('\\', '/')
+	FileN = Temp[-1]
+	# Find the file format from ending of file name
+	# Split the file based upon periods
+	Split = FileN.split('.')
+	# Select the final element of the split and re-insert 
+	# a period to match a .FILETYPE format
+	FileEnd = '.'+Split[-1]
+	for aFormat in FileFormats:
+		if FileEnd==aFormat[-1]:
+			# Define the data type 
+			dtype=aFormat[1]
+	print '\nUploading File...'
+	file_metadata = {'name': str(FileN)}
+	media = MediaFileUpload(File,
+	                        mimetype=dtype)
+	file = service.files().create(body=file_metadata,
+	                                    media_body=media,
+	                                    fields='id').execute()
+	print '\nUpload Completed:'
+	print 'File ID: %s\nFile Name:%s' % (file.get('id'),FileN)
+
+
+# Loop through the program 
+while True:
+	# Request which path is desired. Upload or download
+	print '\nPlease choose a Google Drive request:\n1) File Download\n2) File Upload'
+	query = raw_input('Selection (1 or 2): ')
+
+	try:
+		query = int(query)
+		error = False
+	except:
+		print 'Incorrect query entry: '
+		print query
+		error = True
+		pass
+
+	if query<0 or query>2 and error==False:
+		print 'Value (%i) out of index range.' % query
+		pass
+
+	if query==1:
+		try:
+			DOWNLOAD()
+		except:
+			pass
+	if query==2:
+		try:
+			UPLOAD()
+		except:
+			pass
+
+	query = raw_input('\nContinue with another request? (Y/N): ')
+
+	query = query.upper()
+	if query=='N':
+		print '\n***EXIT***\n'
+		sys.exit()
