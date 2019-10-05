@@ -1,4 +1,4 @@
-5
+
 import modules
 from modules import *
 
@@ -9,12 +9,9 @@ from modules import *
 # the transfer. A single pickle file is needed to access your account. This will be#
 # automatically created. If you wish to change the account being used, the pickle  #
 # will need to be deleted and the script will make a new one. If placing this on a #
-# remote device, api verification can be done by copying and pasting the link      #
-# (provided in the command prompt) to a web browser. File paths for uploads must   #
-# contain the file drive location as well. Meaning you must start from C:\ or      #
-# whatever the location is. If using on a remote device, you must have a .json     #
-# .cred file in the working directory to allow for verification and the writting   #
-# of a pickle file.                                   							   #
+# remote device, api verification must be done on that device. This cannot be run  #
+# remotely the first time. The writting of the pickle file must be approved via    #
+# the web browser on each specific device the program will be used.				   #
 ####################################################################################
 
 ####################################################################################
@@ -31,16 +28,10 @@ with open('FileTypes.csv') as TheCsv:
 		# Select info we want, all but the last element which consists of '\n'
 		FileFormats.append(aItem)
 
-# Define possible scopes for use
-# If modifying these scopes, delete the file token.pickle. These are here for 
-# choosing the permission for the api connection. Each one will allow different 
-# options in drive. We use SCOPESRO for listing files for download and SCOPESUP for
-# the upload section.
+# Define possible scopes for use, this single scope will give permission for both
+# download and upload.
 
-# Download
-SCOPESRO = ['https://www.googleapis.com/auth/drive.readonly']
-# Upload
-SCOPESUP = ['https://www.googleapis.com/auth/drive']
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 
 def DOWNLOAD():
@@ -62,7 +53,7 @@ def DOWNLOAD():
 			creds.refresh(Request())
 		else:
 			flow = InstalledAppFlow.from_client_secrets_file(
-				'credentials.json', SCOPESRO)
+				'credentials.json', SCOPES)
 			creds = flow.run_local_server(port=0)
 		# Save the credentials for the next run
 		with open('token.pickle', 'wb') as token:
@@ -146,11 +137,14 @@ def DOWNLOAD():
 	except:
 		print '\nIncorrect entry format: %s' % type(query)
 		print query
-		sys.exit()
+		pass
 
 	if query<0 or query>i:
 		print 'Value (%i) out of index range.' % query
-		sys.exit()
+		# Define query as number that will be out of range to ensure proper 
+		# error message is delivered
+		query = 99999999
+		pass
 
 	# Prepair list of items for download based upon query result and Options
 	FileTypeForDown = Options[query-1]
@@ -348,7 +342,7 @@ def UPLOAD():
 			creds.refresh(Request())
 		else:
 			flow = InstalledAppFlow.from_client_secrets_file(
-				'credentials.json', SCOPESUP)
+				'credentials.json', SCOPES)
 			creds = flow.run_local_server(port=0)
 		# Save the credentials for the next run
 		with open('token.pickle', 'wb') as token:
@@ -382,15 +376,20 @@ def UPLOAD():
 		if FileEnd==aFormat[-1]:
 			# Define the data type 
 			dtype=aFormat[1]
-	print '\nUploading File...'
-	file_metadata = {'name': str(FileN)}
-	media = MediaFileUpload(File,
-	                        mimetype=dtype)
-	file = service.files().create(body=file_metadata,
-	                                    media_body=media,
-	                                    fields='id').execute()
-	print '\nUpload Completed:'
-	print 'File ID: %s\nFile Name:%s' % (file.get('id'),FileN)
+	try:
+		print '\nUploading File...'
+		file_metadata = {'name': str(FileN)}
+		media = MediaFileUpload(File,
+		                        mimetype=dtype)
+		file = service.files().create(body=file_metadata,
+		                                    media_body=media,
+		                                    fields='id').execute()
+		print '\nUpload Completed:'
+		print 'File ID: %s\nFile Name:%s' % (file.get('id'),FileN)
+	except Exception as e:
+		print e
+		print '\nUpload Failed'
+		pass
 
 
 # Loop through the program 
@@ -415,12 +414,14 @@ while True:
 	if query==1:
 		try:
 			DOWNLOAD()
-		except:
+		except Exception as e:
+			print e
 			pass
 	if query==2:
 		try:
 			UPLOAD()
-		except:
+		except Exception as e:
+			print e
 			pass
 
 	query = raw_input('\nContinue with another request? (Y/N): ')

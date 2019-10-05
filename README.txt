@@ -24,18 +24,17 @@ INSTALLATION:
 1) Enable Google Api -
 You can follow the instructions given here: [ https://developers.google.com/drive/api/
 v3/quickstart/python ] for enabling your Google Drive API. This is required to ensure 
-you are able to access your drive. The Drive.py code will require a credentials file 
-which must be downloaded from Google, it will be an option after you enable your 
+you are able to access your drive. The Google-API.py code will require a credentials file which must be downloaded from Google, it will be an option after you enable your 
 Google API via the given link. This file may have a long crazy name, you must rename 
 it: credentials.json and save it to the GoogleDrive folder.
 
-# NOTE: When installing this on a remote device, remember to add the credentials as 
-part of the package. Without the base credentials (.json) file, you will not be able 
-to create a pickle file for login!
+# NOTE: When installing this on a remote device, the pick file is unique to that device
+so you must physically be at the location to interact with the program before it can
+be used from a remote setting.
 
 2) Run Drive.py-
 The modules.py section provided in the folder should provide you with all the files 
-required to install this in python 2.7. Simply run the Drive.py file and it will 
+required to install this in python 2.7. Simply run the Google-API.py file and it will 
 import the required dependencies via modules.py. modules.py was written while using 
 pip-19.2.3. This is important to note as the subprocess calls used in the event of a 
 failed import may not be compatible with earlier versions (different syntax). After 
