@@ -192,6 +192,7 @@ def DOWNLOAD():
 			for File in AvailableFiles:
 				print '%i) %s' % (i, File)
 				i = i+1
+			Max = i
 			print '\nSeparate values by commas or type A to download all files.'
 			query = raw_input('Please select item/s for download:')
 
@@ -208,7 +209,7 @@ def DOWNLOAD():
 						print '\nIncorrect entry format: %s' % type(Number)
 						print Number
 						sys.exit()
-					if Number<0 or Number>len(query):
+					if Number<0 or Number>Max:
 						print 'Value (%i) out of index range.' % Number
 						sys.exit()
 					FileOfInterest = AvailableFiles[Number-1]
@@ -221,8 +222,9 @@ def DOWNLOAD():
 					BaseName = afile
 					Folder = afile[0:-7]
 					Split = BaseName.split('.')
-					# Select only the base code for the image file. There are 2
-					LandsatCode = Split[0][0:-3]
+					Split2 = Split[0].split('_')
+					# Select only the base code for the image file.
+					LandsatCode = Split2[0]+'_'+Split2[1]+'_'+Split2[2]
 					Codes.append(LandsatCode)
 				# Filter out codes so only one exists for each image file (both B3 and B4)
 				ImageCodes = collections.Counter(Codes).keys()
@@ -239,7 +241,12 @@ def DOWNLOAD():
 					for item in AllDriveFiles:
 						if item['name']==BaseName:
 							file_id = (item['id'])
-							Folder = afile[0:-7]
+							# Folder to be written to
+							Split = BaseName.split('.')
+							Split2 = Split[0].split('_')
+							# Select only the base code for the image file.
+							Folder = Split2[0]+'_'+Split2[1]+'_'+Split2[2]
+							# Folder = afile[0:-7]
 					service = build('drive', 'v3', credentials=creds)
 					request = service.files().get_media(fileId=file_id)
 
@@ -264,6 +271,7 @@ def DOWNLOAD():
 		for File in AvailableFiles:
 			print '%i) %s' % (i, File)
 			i = i+1
+		Max = i
 		print '\nSeparate values by commas or type A to download all files.'
 		query = raw_input('Please select item/s for download:')
 
@@ -280,7 +288,7 @@ def DOWNLOAD():
 					print 'Incorrect entry format: %s' % type(Number)
 					print Number
 					return
-				if Number<0 or Number>len(query):
+				if Number<0 or Number>Max:
 					print 'Value (%i) out of index range.' % Number
 					return
 				FileOfInterest = AvailableFiles[Number-1]
